@@ -22,7 +22,7 @@ function taskList() {
   })
 }
 function taskMarkup(task) {
-  return `<article class="task ${task.done ? 'is-done' : ''}" data-id="${task.id}"><button class="check-button" data-action="toggle" aria-label="${task.done ? '未完了に戻す' : '完了にする'}">${task.done ? icon('check') : ''}</button><div class="task-copy"><h3>${task.title}</h3><div class="task-meta"><span class="tag tag-${task.category.toLowerCase()}">${task.category}</span><span>${task.due}</span></div></div><span class="priority priority-${task.priority}" title="優先度"></span><button class="icon-button more-button" data-action="delete" aria-label="タスクを削除">${icon('more')}</button></article>`
+  return `<article class="task ${task.done ? 'is-done' : ''}" data-id="${task.id}"><button class="check-button" data-action="toggle" aria-label="${task.done ? '未完了に戻す' : '完了にする'}">${task.done ? icon('check') : ''}</button><div class="task-copy"><h3>${task.title}</h3><div class="task-meta"><span class="tag tag-${task.category.toLowerCase()}">${task.category}</span><span>${task.due}</span></div></div><span class="priority priority-${task.priority}" title="優先度"></span><button class="icon-button more-button" data-action="menu" aria-label="タスクのメニュー">${icon('more')}</button></article>`
 }
 function render() {
   const visible = taskList(); const completed = tasks.filter((task) => task.done).length; const today = tasks.filter((task) => task.due === '今日'); const todayDone = today.filter((task) => task.done).length; const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0
@@ -65,10 +65,40 @@ function addTask() {
   })
   dialog.showModal()
 }
+function editTask(taskId) {
+  const task = tasks.find((entry) => entry.id === taskId)
+  if (!task) return
+
+  const dialog = document.createElement('dialog')
+  dialog.className = 'task-dialog'
+  dialog.innerHTML = `<form method="dialog"><h2>タスクを編集</h2><p class="dialog-task-title">${task.title}</p><label>カテゴリ<select name="category"><option value="Work" ${task.category === 'Work' ? 'selected' : ''}>仕事</option><option value="Personal" ${task.category === 'Personal' ? 'selected' : ''}>個人</option><option value="Ideas" ${task.category === 'Ideas' ? 'selected' : ''}>アイデア</option></select></label><div class="dialog-actions"><button type="button" class="delete-task-button" data-action="delete-task">削除</button><button type="button" data-action="cancel-task">キャンセル</button><button type="submit">保存</button></div></form>`
+  document.body.append(dialog)
+
+  dialog.addEventListener('close', () => dialog.remove())
+  dialog.addEventListener('click', (event) => {
+    const action = event.target.dataset.action
+    if (action === 'cancel-task') dialog.close()
+    if (action === 'delete-task') {
+      tasks = tasks.filter((entry) => entry.id !== taskId)
+      save()
+      dialog.close()
+      render()
+    }
+  })
+  dialog.querySelector('form').addEventListener('submit', (event) => {
+    event.preventDefault()
+    const category = new FormData(event.currentTarget).get('category')
+    task.category = category
+    save()
+    dialog.close()
+    render()
+  })
+  dialog.showModal()
+}
 app.addEventListener('click', (event) => {
   const filter = event.target.closest('[data-filter]'); if (filter) { activeFilter = filter.dataset.filter; render(); return }
   const action = event.target.closest('[data-action]')?.dataset.action; if (action === 'new') addTask(); if (action === 'search') { document.querySelector('.search-row').classList.add('visible'); document.querySelector('#search-input')?.focus() }; if (action === 'clear-search') { searchQuery = ''; render() }
-  const task = event.target.closest('.task'); if (task && action === 'toggle') { const item = tasks.find((entry) => entry.id === Number(task.dataset.id)); item.done = !item.done; save(); render() }; if (task && action === 'delete') { tasks = tasks.filter((entry) => entry.id !== Number(task.dataset.id)); save(); render() }
+  const task = event.target.closest('.task'); if (task && action === 'toggle') { const item = tasks.find((entry) => entry.id === Number(task.dataset.id)); item.done = !item.done; save(); render() }; if (task && action === 'menu') editTask(Number(task.dataset.id))
 })
 app.addEventListener('input', (event) => { if (event.target.id === 'search-input') { searchQuery = event.target.value; render(); document.querySelector('.search-row').classList.add('visible'); document.querySelector('#search-input')?.focus() } })
 render()
